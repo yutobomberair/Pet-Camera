@@ -1,0 +1,8 @@
+training/venv_train
+training/__pycache__
+training/dataset/images/*
+!training/dataset/images/.gitkeep
+training/dataset/labels/*
+!training/dataset/labels/.gitkeep
+training/my_dog/*
+!training/my_dog/.gitkeep
