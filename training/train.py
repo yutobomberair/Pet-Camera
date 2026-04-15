@@ -1,10 +1,13 @@
 from ultralytics import YOLO
 
-model = YOLO("yolov8n.pt")
+# 分類モデル読み込み（軽いモデル）
+model = YOLO("yolov8n-cls.pt")
 
+# 学習
 model.train(
-    data="./dataset/dataset.yaml",
+    data="dataset_cls",   # ← ルートディレクトリ
     epochs=50,
-    imgsz=640,
-    batch=16
+    imgsz=224,
+    batch=32,
+    device="cuda"
 )

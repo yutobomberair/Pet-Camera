@@ -2,9 +2,11 @@ import fiftyone as fo
 import fiftyone.zoo as foz
 import os
 import shutil
+from collections import defaultdict
 from sklearn.model_selection import train_test_split
 
 EXPORT_DIR = "../dataset"
+CLS_DIR = "../dataset_cls"
 
 CLASS_SAMPLES = {
     "Dog": 8000,
@@ -14,13 +16,12 @@ CLASS_SAMPLES = {
 }
 
 # =========================
-# dataset download
+# ① dataset download
 # =========================
 
 datasets = []
 
 for cls, n in CLASS_SAMPLES.items():
-
     print(f"Downloading {cls}: {n}")
 
     ds = foz.load_zoo_dataset(
@@ -34,7 +35,6 @@ for cls, n in CLASS_SAMPLES.items():
 
     datasets.append(ds)
 
-
 dataset = fo.Dataset("pet_camera_dataset")
 
 for ds in datasets:
@@ -44,7 +44,7 @@ print("Total samples:", len(dataset))
 
 
 # =========================
-# export
+# ② YOLO形式でexport（中間）
 # =========================
 
 if os.path.exists(EXPORT_DIR):
@@ -61,74 +61,70 @@ print("Export complete")
 
 
 # =========================
-# split train / val
+# ③ YOLO検出 → 分類用に変換
 # =========================
 
-SRC_IMG = os.path.join(EXPORT_DIR, "images", "val")
-SRC_LBL = os.path.join(EXPORT_DIR, "labels", "val")
+if os.path.exists(CLS_DIR):
+    shutil.rmtree(CLS_DIR)
 
-TRAIN_IMG = os.path.join(EXPORT_DIR, "images", "train")
-VAL_IMG = os.path.join(EXPORT_DIR, "images", "val")
+os.makedirs(CLS_DIR, exist_ok=True)
 
-TRAIN_LBL = os.path.join(EXPORT_DIR, "labels", "train")
-VAL_LBL = os.path.join(EXPORT_DIR, "labels", "val")
+label_dir = os.path.join(EXPORT_DIR, "labels", "val")
+img_dir = os.path.join(EXPORT_DIR, "images", "val")
 
-os.makedirs(TRAIN_IMG, exist_ok=True)
-os.makedirs(TRAIN_LBL, exist_ok=True)
+class_map = defaultdict(list)
 
-images = [
-    f for f in os.listdir(SRC_IMG)
-    if f.lower().endswith((".jpg", ".jpeg", ".png"))
-]
+labels = os.listdir(label_dir)
 
-print("Images found:", len(images))
+for label_file in labels:
 
-train_imgs, val_imgs = train_test_split(
-    images,
-    test_size=0.1,
-    random_state=42
-)
+    label_path = os.path.join(label_dir, label_file)
 
+    with open(label_path) as f:
+        lines = f.readlines()
 
-def move(files, img_dst, lbl_dst):
+    if len(lines) == 0:
+        continue
 
-    for f in files:
+    # 1つ目の物体だけ使う（簡略）
+    cls_id = int(lines[0].split()[0])
+    cls_name = list(CLASS_SAMPLES.keys())[cls_id]
 
-        name = os.path.splitext(f)[0]
-
-        shutil.move(
-            os.path.join(SRC_IMG, f),
-            os.path.join(img_dst, f)
-        )
-
-        shutil.move(
-            os.path.join(SRC_LBL, name + ".txt"),
-            os.path.join(lbl_dst, name + ".txt")
-        )
-
-
-move(train_imgs, TRAIN_IMG, TRAIN_LBL)
-
-print("Train images:", len(train_imgs))
-print("Val images:", len(val_imgs))
+    img_name = label_file.replace(".txt", ".jpg")
+    class_map[cls_name].append(img_name)
 
 
 # =========================
-# dataset.yaml
+# ④ train / val split（分類形式）
 # =========================
 
-yaml = f"""path: {EXPORT_DIR.split('/')[-1]}
+for cls, imgs in class_map.items():
 
-train: images/train
-val: images/val
+    train_imgs, val_imgs = train_test_split(
+        imgs,
+        test_size=0.1,
+        random_state=42
+    )
 
-names:
-"""
+    # ディレクトリ作成
+    train_dir = os.path.join(CLS_DIR, "train", cls)
+    val_dir = os.path.join(CLS_DIR, "val", cls)
 
-for i, name in enumerate(CLASS_SAMPLES.keys()):
-    yaml += f"  {i}: {name}\n"
+    os.makedirs(train_dir, exist_ok=True)
+    os.makedirs(val_dir, exist_ok=True)
 
-with open(os.path.join(EXPORT_DIR, "dataset.yaml"), "w") as f:
-    f.write(yaml)
+    # コピー関数
+    def copy_images(file_list, dst_dir):
+        for img in file_list:
+            src = os.path.join(img_dir, img)
+            if os.path.exists(src):
+                shutil.copy(src, os.path.join(dst_dir, img))
 
-print("dataset.yaml created")
+    copy_images(train_imgs, train_dir)
+    copy_images(val_imgs, val_dir)
+
+    print(f"{cls}: train={len(train_imgs)}, val={len(val_imgs)}")
+
+
+print("Classification dataset created at:", CLS_DIR)
+
