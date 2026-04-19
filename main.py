@@ -3,26 +3,8 @@ import time
 import numpy as np
 import tflite_runtime.interpreter as tflite
 
-from motion_detection.MotionDetection_module import MotionDetection_module 
-
-# =========================
-# モデルロード
-# =========================
-interpreter = tflite.Interpreter(
-    model_path="training/yolov8n-cls_float32.tflite"  # ← 必ず自分のbestモデルから変換したやつ
-)
-interpreter.allocate_tensors()
-
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
-
-print("INPUT SHAPE:", input_details[0]['shape'])
-print("OUTPUT SHAPE:", output_details[0]['shape'])
-
-# =========================
-# クラス
-# =========================
-classes = ["Dog", "Person", "Cat", "Bird"]
+from motion_detection.MotionDetection_module import MotionDetection_module
+from DNN_detection.DNN_module import DNN_module 
 
 # =========================
 # カメラ
@@ -34,7 +16,7 @@ cap = cv2.VideoCapture(0)
 # =========================
 STATE = {0: "md", 1: "dnn", 2: "fr"}
 det_fps = 10
-conf_thresh = 90
+dnn_trial = 10
 md_config = {
     "md_h": 30,
     "md_v": 24,
@@ -42,6 +24,10 @@ md_config = {
     "update_period": 5,
     "pix_thresh": 25,
     "num_thresh": 20,
+}
+dnn_config = {
+    "target": "Dog", 
+    "conf_thresh": 90,
 }
 
 # =========================
@@ -57,80 +43,53 @@ drop = fps / det_fps
 
 current_state = STATE[0]
 frm_count = 0
+dnn_frm_count = 0
 md = MotionDetection_module(md_config)
+dnn = DNN_module(dnn_config)
+
 while True:
     if current_state != "fr" and frm_count < drop:
         frm_count += 1
         continue
 
     elif current_state == "md":
+        print("state is md.")
         frm_count = 0
         ret, frame = cap.read()
         if not ret:
             print("❌ フレーム取得失敗")
             break
-        md.update_buffer(frame)
-        current_state = "dnn"
-        print("a")
+        is_detect = md.detect
+        if is_detect:
+            current_state = "dnn"
+        # else:
+        #     current_state = "md"
         continue
 
     elif current_state == "dnn":
+        print("state is dnn")
         ret, frame = cap.read()
         if not ret:
             print("❌ フレーム取得失敗")
             break
 
-        # =========================
-        # 前処理
-        # =========================
-        img = cv2.resize(frame, (320, 320))
-        img = img.astype(np.float32) / 255.0
-        img = np.expand_dims(img, axis=0)  # (1, 320, 320, 3)
-
-        # =========================
-        # 推論
-        # =========================
-        interpreter.set_tensor(input_details[0]['index'], img)
-        interpreter.invoke()
-
-        output = interpreter.get_tensor(output_details[0]['index'])[0]
-
-        # =========================
-        # 後処理
-        # =========================
-        pred = int(np.argmax(output))
-        conf = float(output[pred])
-
-        # 安全対策（1000クラス問題防止）
-        if pred < len(classes):
-            label = classes[pred]
-        else:
-            label = "Unknown"
-
-        if label == "Dog" and conf >= conf_thresh:
+        is_detect = dnn.detect(frame)
+        if is_detect:
             current_state = "fr"
+        elif dnn_frm_count < dnn_trial:
+            dnn_frm_count += 1
+            # curren_state = "dnn"
+        else:
+            dnn_frm_count = 0
+            current_state = "md"
+        continue
 
-        # =========================
-        # 描画
-        # =========================
-        text = f"{label}: {conf:.2f}"
-        cv2.putText(
-            frame,
-            text,
-            (10, 30),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1,
-            (0, 255, 0),
-            2
-        )
-
-        # print(text)
-
+    elif current_state == "fr":
+        print("state is fr")
         cv2.imshow("camera", frame)
 
         if cv2.waitKey(1) & 0xFF == 27:
             break
-    count = 0
 
 cap.release()
 cv2.destroyAllWindows()

@@ -33,11 +33,14 @@ class MotionDetection_module:
         return bin_img
 
     def detect(self, img):
+        # detection caluculation
         proc_img = self.preprocess(img)
         ave_buffer = np.mean(self.buffer, axis=0)
         diff = cv2.absdiff(proc_img, ave_buffer.astype(np.uint8))
         diff_norm = diff.astype(np.float32) / 255
         mask = (diff_norm > self.pix_thresh).astype(np.uint8)
+        # update buffer(if buf_count is not full, it will be through)
+        self.update_buffer(img)
         if np.sum(mask) > self.num_thresh:
             return 1
         else:
