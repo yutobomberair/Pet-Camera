@@ -1,12 +1,14 @@
+import numpy as np
+import cv2
 
 class MotionDetection_module:
     def __init__(self, config):
-        self.md_h = config.md_h
-        self.md_v = config.md_v
-        self.bufnum = config.bufnum
-        self.update_period = config.update_period
-        self.pix_thresh = config.pix_thresh
-        self.num_thresh = config.num_thresh
+        self.md_h = config["md_h"]
+        self.md_v = config["md_v"]
+        self.bufnum = config["bufnum"]
+        self.update_period = config["update_period"]
+        self.pix_thresh = config["pix_thresh"]
+        self.num_thresh = config["num_thresh"]
         self.reset()
 
     def update_buffer(self, img):
@@ -27,7 +29,7 @@ class MotionDetection_module:
 
     def preprocess(self, img):
         gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        bin_img = cv2.resize(img, (self.md_h, self.md_v), interpolation=cv2.INTER_AREA)
+        bin_img = cv2.resize(gray_img, (self.md_h, self.md_v), interpolation=cv2.INTER_AREA)
         return bin_img
 
     def detect(self, img):
@@ -45,4 +47,4 @@ class MotionDetection_module:
         self.buf_cnt = 0
         self.buf_idx = 0
         self.buf_isfull = 0
-        self.buffer = np.zeros((self.bufnum, self.md_h, self.md_v, 1), dtype=np.uint8)
+        self.buffer = np.zeros((self.bufnum, self.md_v, self.md_h), dtype=np.uint8)

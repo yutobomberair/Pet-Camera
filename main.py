@@ -3,7 +3,7 @@ import time
 import numpy as np
 import tflite_runtime.interpreter as tflite
 
-from motion_dtection.MotionDetection_module import MotionDetection_module 
+from motion_detection.MotionDetection_module import MotionDetection_module 
 
 # =========================
 # モデルロード
@@ -35,10 +35,10 @@ cap = cv2.VideoCapture(0)
 STATE = {0: "md", 1: "dnn", 2: "fr"}
 det_fps = 10
 conf_thresh = 90
-md_configs = {
+md_config = {
     "md_h": 30,
     "md_v": 24,
-    "bufnum": 25, 
+    "bufnum": 15, 
     "update_period": 5,
     "pix_thresh": 25,
     "num_thresh": 20,
@@ -57,7 +57,7 @@ drop = fps / det_fps
 
 current_state = STATE[0]
 frm_count = 0
-md = MotionDetection_module()
+md = MotionDetection_module(md_config)
 while True:
     if current_state != "fr" and frm_count < drop:
         frm_count += 1
