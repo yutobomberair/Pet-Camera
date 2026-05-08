@@ -11,7 +11,7 @@ from DNN_detection.DNN_module import DNN_module
 # Discord Config
 # =========================
 DISCORD_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1498469694095622214/TUCmlYmNiM47QJEPBgBoUQG0Jb0kYyNKohcKIq2fuZAaIIKRAPn3O-mkK9sQjcd5EsE8"
-STREAM_URL = "http://localhost:5000/stream"
+STREAM_URL = "http://100.89.44.99:5000/stream"
 
 def send_detect_notification():
     try:
