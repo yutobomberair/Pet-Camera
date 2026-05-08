@@ -77,12 +77,9 @@ sudo systemctl enable wg-quick@wg0
 
 - UDP 51820 を Raspberry Pi にポートフォワード
 - http://<家BのIPアドレス>を任意のブラウザで検索し、ポートフォワード設定を行う
-- 調べ方は下記のどちらか
+- 調べ方はRaspi上で下記を実行し、default via ~のIPを引っ張ってくる
 ```bash
-netstat -nr | grep default
-```
-```bash
-route -n get default
+ip route
 ```
 
 ## 3. 家A（クライアントPC側）の設定
@@ -144,3 +141,130 @@ sudo wg-quick down wg0
 ```bash
 ssh pi@10.0.0.1
 ```
+
+## 7. 接続できない場合
+家Bルーターの WAN IP が：
+
+```text
+100.xxx.xxx.xxx
+```
+
+だったため、CGNAT環境だった。
+
+この場合：
+
+- ポートフォワードしても外部から到達できない
+- UDP 51820 が届かない
+- handshake が発生しない
+
+ため、Tailscale に切り替えた。
+
+
+---
+
+### CGNAT とは？
+
+### CGNAT の概要
+
+CGNAT（Carrier Grade NAT）は、ISP側で多数の利用者がグローバルIPを共有する仕組み。
+
+構成イメージ：
+
+```text
+Internet
+   ↓
+ISP共有グローバルIP
+   ↓
+CGNAT
+   ↓
+自宅ルーター(WAN IP = 100.x.x.x)
+   ↓
+家庭内ネットワーク
+```
+
+---
+
+### なぜ問題になるのか？
+
+通常のポートフォワードは：
+
+```text
+Internet
+   ↓
+グローバルIP
+   ↓
+自宅ルーター
+   ↓
+Raspberry Pi
+```
+
+という前提で動作する。
+
+しかし CGNAT 環境では：
+
+- ISP側にもNATが存在する
+- 自宅ルーターが本当のグローバルIPを持っていない
+- 外部から直接着信できない
+
+ため、自宅ルーターでポート開放しても通信が届かない。
+
+---
+
+### CGNAT の特徴
+
+#### WAN IP が以下で始まることが多い
+
+```text
+100.x.x.x
+```
+
+または：
+
+```text
+10.x.x.x
+```
+
+---
+
+### 今回の症状
+
+今回発生していた：
+
+- WireGuard handshake が発生しない
+- transfer sent のみ増える
+- received が 0 B
+- tcpdump に UDP 51820 が届かない
+
+という症状は、CGNAT 環境と一致していた。
+
+---
+
+### CGNAT 環境での対策
+
+#### 方法1：Tailscale を使う（今回採用）
+
+メリット：
+
+- ポート開放不要
+- CGNAT対応
+- WireGuardベース
+- NAT越え自動
+
+---
+
+#### 方法2：固定グローバルIP契約
+
+ISPによってはオプション契約で：
+
+- 固定IP
+- ポート開放可能IPv4
+
+を利用できる場合がある。
+
+---
+
+#### 方法3：VPS中継
+
+VPSをWireGuardサーバにして中継する構成。
+
+ただし構築難易度は高め。
