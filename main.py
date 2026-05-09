@@ -130,6 +130,25 @@ def stream():
         mimetype='multipart/x-mixed-replace; boundary=frame'
     )
 
+@app.route("/snapshot")
+def snapshot():
+
+    global latest_frame
+
+    if latest_frame is None:
+        return "No frame", 500
+
+    frame_copy = latest_frame.copy()
+
+    ret, jpeg = cv2.imencode(".jpg", frame_copy)
+
+    if not ret:
+        return "Encode failed", 500
+
+    return Response(
+        jpeg.tobytes(),
+        mimetype="image/jpeg"
+    )
 
 def run_server():
     app.run(host="0.0.0.0", port=5000, threaded=True)
