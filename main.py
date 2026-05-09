@@ -107,24 +107,18 @@ def stream():
 
                 frame_copy = latest_frame.copy()
 
-                print(frame_copy.shape)
-                print(frame_copy.dtype)
-
-                ret, jpeg = cv2.imencode('.jpg', frame_copy)
-
-                print("ENCODE:", ret)
+                ret, jpeg = cv2.imencode(".jpg", frame_copy)
 
                 if not ret:
-                    time.sleep(0.01)
                     continue
 
                 frame = jpeg.tobytes()
 
                 yield (
                     b'--frame\r\n'
-                    b'Content-Type: image/jpeg\r\n\r\n' +
-                    frame +
-                    b'\r\n'
+                    b'Content-Type: image/jpeg\r\n'
+                    b'Content-Length: ' + f"{len(frame)}".encode() + b'\r\n'
+                    b'\r\n' + frame + b'\r\n'
                 )
 
             except Exception as e:
