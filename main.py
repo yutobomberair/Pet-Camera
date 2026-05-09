@@ -73,23 +73,68 @@ def status():
     })
 
 
+# @app.route("/stream")
+# def stream():
+#     def generate():
+#         global latest_frame
+#         while True:
+#             if latest_frame is None:
+#                 continue
+
+#             ret, jpeg = cv2.imencode('.jpg', latest_frame)
+#             frame = jpeg.tobytes()
+
+#             yield (b'--frame\r\n'
+#                    b'Content-Type: image/jpeg\r\n\r\n' +
+#                    frame + b'\r\n')
+
+#     return Response(generate(),
+#                     mimetype='multipart/x-mixed-replace; boundary=frame')
+
 @app.route("/stream")
 def stream():
+
     def generate():
         global latest_frame
+
         while True:
-            if latest_frame is None:
-                continue
 
-            ret, jpeg = cv2.imencode('.jpg', latest_frame)
-            frame = jpeg.tobytes()
+            try:
 
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' +
-                   frame + b'\r\n')
+                if latest_frame is None:
+                    time.sleep(0.01)
+                    continue
 
-    return Response(generate(),
-                    mimetype='multipart/x-mixed-replace; boundary=frame')
+                frame_copy = latest_frame.copy()
+
+                print(frame_copy.shape)
+                print(frame_copy.dtype)
+
+                ret, jpeg = cv2.imencode('.jpg', frame_copy)
+
+                print("ENCODE:", ret)
+
+                if not ret:
+                    time.sleep(0.01)
+                    continue
+
+                frame = jpeg.tobytes()
+
+                yield (
+                    b'--frame\r\n'
+                    b'Content-Type: image/jpeg\r\n\r\n' +
+                    frame +
+                    b'\r\n'
+                )
+
+            except Exception as e:
+                print("STREAM ERROR:", e)
+                time.sleep(0.1)
+
+    return Response(
+        generate(),
+        mimetype='multipart/x-mixed-replace; boundary=frame'
+    )
 
 
 def run_server():
