@@ -97,6 +97,23 @@ def run_server():
 
 
 # =========================
+# Detection config
+# =========================
+dnn_trial = 10
+md_config = {
+    "md_h": 30,
+    "md_v": 24,
+    "bufnum": 15, 
+    "update_period": 5,
+    "pix_thresh": 25,
+    "num_thresh": 20,
+}
+dnn_config = {
+    "target": "Dog", 
+    "conf_thresh": 90,
+}
+
+# =========================
 # Camera Init
 # =========================
 cap = cv2.VideoCapture(0)
@@ -105,8 +122,8 @@ fps = cap.get(cv2.CAP_PROP_FPS)
 det_fps = 3
 det_drop = max(1, int(fps / det_fps))
 
-md = MotionDetection_module({...})
-dnn = DNN_module({...})
+md = MotionDetection_module(md_config)
+dnn = DNN_module(dnn_config)
 
 frame_count = 0
 prev_detect_flag = False
