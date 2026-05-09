@@ -1,6 +1,7 @@
 import cv2
 import threading
 import requests
+import time
 from flask import Flask, Response, jsonify
 
 from motion_detection.MotionDetection_module import MotionDetection_module
@@ -93,25 +94,18 @@ def status():
 
 @app.route("/stream")
 def stream():
-
     def generate():
         global latest_frame
-
         while True:
-
             try:
-
                 if latest_frame is None:
                     time.sleep(0.01)
                     continue
-
                 frame_copy = latest_frame.copy()
-
                 ret, jpeg = cv2.imencode(".jpg", frame_copy)
 
                 if not ret:
                     continue
-
                 frame = jpeg.tobytes()
 
                 yield (
@@ -122,8 +116,8 @@ def stream():
                 )
 
             except Exception as e:
-                print("STREAM ERROR:", e)
-                time.sleep(0.1)
+                print("STREAM ERROR:", repr(e))
+                break
 
     return Response(
         generate(),
