@@ -138,45 +138,43 @@ threading.Thread(target=run_server, daemon=True).start()
 # =========================
 # Main Loop
 # =========================
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        break
+try:
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
 
-    frame_count += 1
+        frame_count += 1
 
-    # --- Detection ---
-    if frame_count % det_drop == 0:
-        motion = md.detect(frame)
+        # --- Detection ---
+        if frame_count % det_drop == 0:
+            motion = md.detect(frame)
 
-        if motion:
-            detect_flag = dnn.detect(frame)
+            if motion:
+                detect_flag = dnn.detect(frame)
+            else:
+                detect_flag = False
+
+        # --- Discord Notify ---
+        if detect_flag and not prev_detect_flag:
+            send_detect_notification()
+
+        elif not detect_flag and prev_detect_flag:
+            send_non_detect_notification()
+
+        prev_detect_flag = detect_flag
+
+        # --- Output Resolution ---
+        if record_flag:
+            output_frame = cv2.resize(frame, (1920, 1080))
+        elif detect_flag:
+            output_frame = cv2.resize(frame, (1280, 720))
         else:
-            detect_flag = False
+            output_frame = cv2.resize(frame, (640, 360))
 
-    # --- Discord Notify ---
-    if detect_flag and not prev_detect_flag:
-        send_detect_notification()
-
-    elif not detect_flag and prev_detect_flag:
-        send_non_detect_notification()
-
-    prev_detect_flag = detect_flag
-
-    # --- Output Resolution ---
-    if record_flag:
-        output_frame = cv2.resize(frame, (1920, 1080))
-    elif detect_flag:
-        output_frame = cv2.resize(frame, (1280, 720))
-    else:
-        output_frame = cv2.resize(frame, (640, 360))
-
-    latest_frame = output_frame.copy()
-
-    cv2.imshow("camera", output_frame)
-
-    if cv2.waitKey(1) & 0xFF == 27:
-        break
+        latest_frame = output_frame.copy()
+except KeyboardInterrupt:
+    print("Stopped.")
 
 
 cap.release()
